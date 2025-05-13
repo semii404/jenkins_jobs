@@ -1,5 +1,5 @@
 pipeline {
-    agent none
+    agent none  // We specify agent none here so we can define individual agent blocks
 
     environment {
         SONARQUBE = 'SonarQube'            // Name from Jenkins > Configure System
