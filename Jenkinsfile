@@ -66,7 +66,7 @@ pipeline {
                         -Dsonar.login=$SONAR_AUTH_TOKEN \
                         -Dsonar.qualitygate.wait=true
                     """)
-                    echo qualityGateStatus
+                    echo $qualityGateStatus
                     // Check the quality gate status in the output
                     // if (qualityGateStatus.contains("Quality gate status: OK")) {
                     //     echo "SonarQube Quality Gate Status: OK"
