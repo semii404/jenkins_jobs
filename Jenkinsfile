@@ -6,7 +6,7 @@ pipeline {
     }
 
     tools {
-        sonarQube 'SonarScanner' // Name defined in Configure System
+        SonarQube 'SonarScanner' // Name defined in Configure System
     }
 
     stages {
