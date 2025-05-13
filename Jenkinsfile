@@ -25,7 +25,7 @@ pipeline {
             }
             steps {
                 script {
-                    sh 'npm install'  // Install npm dependencies
+                    sh 'echo npminstall'  // Install npm dependencies
                 }
             }
         }
