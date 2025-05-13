@@ -59,21 +59,19 @@ pipeline {
             }
             steps {
                 script {
-                    // SonarQube API URL for quality gate status
-                    def apiUrl = "$SONAR_HOST_URL/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY"
-                    
-                    // Fetch the quality gate status using curl and parse the JSON response
-                    def response = sh(script: "curl -s -u $SONAR_AUTH_TOKEN: $apiUrl", returnStdout: true).trim()
-                    
-                    // Parse the response and get the status
-                    def jsonResponse = readJSON text: response
-                    def status = jsonResponse.projectStatus.status
+                    // Wait for the analysis to complete and fetch the quality gate status using sonar-scanner CLI
+                    def qualityGateStatus = sh(script: """
+                        sonar-scanner -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                        -Dsonar.host.url=$SONAR_HOST_URL \
+                        -Dsonar.login=$SONAR_AUTH_TOKEN \
+                        -Dsonar.qualitygate.wait=true
+                    """, returnStdout: true).trim()
 
-                    echo "SonarQube Quality Gate Status: ${status}"
-
-                    // Check if the quality gate status is OK
-                    if (status != 'OK') {
-                        error "Quality gate failed: ${status}"
+                    // Check the quality gate status in the output
+                    if (qualityGateStatus.contains("Quality gate status: OK")) {
+                        echo "SonarQube Quality Gate Status: OK"
+                    } else {
+                        error "Quality gate failed: ${qualityGateStatus}"
                     }
                 }
             }
