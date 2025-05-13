@@ -54,7 +54,7 @@ pipeline {
             steps {
                 script {
                     // SonarQube API URL for quality gate status
-                    def apiUrl = "http://$SONAR_HOST_URL/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY"
+                    def apiUrl = "$SONAR_HOST_URL/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY"
                     
                     // Fetch the quality gate status using curl and parse the JSON response
                     def response = sh(script: "curl -s -u $SONAR_AUTH_TOKEN: $apiUrl", returnStdout: true).trim()
