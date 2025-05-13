@@ -2,11 +2,7 @@ pipeline {
     agent any
 
     environment {
-        SONARQUBE = 'SonarQube' // Name defined in Configure System
-    }
-
-    tools {
-        SonarQube 'SonarScanner' // Name defined in Configure System
+        SONARQUBE = 'SonarQube' // Name from Jenkins > Configure System
     }
 
     stages {
