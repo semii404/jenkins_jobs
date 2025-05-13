@@ -65,14 +65,14 @@ pipeline {
                         -Dsonar.host.url=$SONAR_HOST_URL \
                         -Dsonar.login=$SONAR_AUTH_TOKEN \
                         -Dsonar.qualitygate.wait=true
-                    """, returnStdout: true).trim()
-
+                    """)
+                    echo qualityGateStatus
                     // Check the quality gate status in the output
-                    if (qualityGateStatus.contains("Quality gate status: OK")) {
-                        echo "SonarQube Quality Gate Status: OK"
-                    } else {
-                        error "Quality gate failed: ${qualityGateStatus}"
-                    }
+                    // if (qualityGateStatus.contains("Quality gate status: OK")) {
+                    //     echo "SonarQube Quality Gate Status: OK"
+                    // } else {
+                    //     error "Quality gate failed: ${qualityGateStatus}"
+                    // }
                 }
             }
         }
