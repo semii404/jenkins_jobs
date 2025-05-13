@@ -53,28 +53,27 @@ pipeline {
         stage('Quality Gate Check') {
             agent {
                 docker {
-                    image 'sonarsource/sonar-scanner-cli'  // Using the same Docker image as SonarQube Analysis
+                    image 'sonarsource/sonar-scanner-cli'
                     args '-v $PWD:/usr/src'
                 }
             }
             steps {
                 script {
-                    // Wait for the analysis to complete and fetch the quality gate status using sonar-scanner CLI
-                    def qualityGateStatus = sh(script: """
-                        sonar-scanner -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-                        -Dsonar.host.url=$SONAR_HOST_URL \
-                        -Dsonar.login=$SONAR_AUTH_TOKEN \
-                        -Dsonar.qualitygate.wait=true
-                    """)
-                    echo $qualityGateStatus
-                    // Check the quality gate status in the output
-                    // if (qualityGateStatus.contains("Quality gate status: OK")) {
-                    //     echo "SonarQube Quality Gate Status: OK"
-                    // } else {
-                    //     error "Quality gate failed: ${qualityGateStatus}"
-                    // }
+                    // Run sonar-scanner and write output to a file
+                    sh """
+                        sonar-scanner \
+                            -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                            -Dsonar.host.url=$SONAR_HOST_URL \
+                            -Dsonar.login=$SONAR_AUTH_TOKEN \
+                            -Dsonar.qualitygate.wait=true \
+                        | tee sonar_scan_output.log
+                    """
                 }
+
+                // Archive the output log as a build artifact
+                archiveArtifacts artifacts: 'sonar_scan_output.log', fingerprint: true
             }
         }
+
     }
 }
