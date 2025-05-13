@@ -1,25 +1,34 @@
 pipeline {
     agent any
 
+    environment {
+        SONARQUBE = 'SonarQube' // Name defined in Configure System
+    }
+
+    tools {
+        sonarQube 'SonarScanner' // Name defined in Configure System
+    }
+
     stages {
-        stage('Build') {
+        stage('Checkout') {
             steps {
-                echo 'Building the application...'
-                // e.g., sh 'mvn clean package'
+                git 'https://github.com/semii404/jenkins_jobs.git'
             }
         }
 
-        stage('Test') {
+        stage('SonarQube Analysis') {
             steps {
-                echo 'Running tests...'
-                // e.g., sh 'mvn test'
+                withSonarQubeEnv('SonarQube') {
+                    sh 'sonar-scanner'
+                }
             }
         }
 
-        stage('Deploy') {
+        stage("Quality Gate") {
             steps {
-                echo 'Deploying the application...'
-                // e.g., sh './deploy.sh'
+                timeout(time: 2, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
             }
         }
     }
