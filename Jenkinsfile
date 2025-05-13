@@ -8,7 +8,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git 'https://github.com/semii404/jenkins_jobs.git'
+                git branch: 'main', url: 'https://github.com/semii404/jenkins_jobs.git'
             }
         }
 
