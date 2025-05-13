@@ -51,23 +51,27 @@ pipeline {
         }
 
         stage('Quality Gate Check') {
+            agent none  // Ensuring it's not using a Docker agent here
+
             steps {
-                script {
-                    // SonarQube API URL for quality gate status
-                    def apiUrl = "$SONAR_HOST_URL/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY"
-                    
-                    // Fetch the quality gate status using curl and parse the JSON response
-                    def response = sh(script: "curl -s -u $SONAR_AUTH_TOKEN: $apiUrl", returnStdout: true).trim()
-                    
-                    // Parse the response and get the status
-                    def jsonResponse = readJSON text: response
-                    def status = jsonResponse.projectStatus.status
+                node {
+                    script {
+                        // SonarQube API URL for quality gate status
+                        def apiUrl = "http://$SONAR_HOST_URL/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY"
+                        
+                        // Fetch the quality gate status using curl and parse the JSON response
+                        def response = sh(script: "curl -s -u $SONAR_AUTH_TOKEN: $apiUrl", returnStdout: true).trim()
+                        
+                        // Parse the response and get the status
+                        def jsonResponse = readJSON text: response
+                        def status = jsonResponse.projectStatus.status
 
-                    echo "SonarQube Quality Gate Status: ${status}"
+                        echo "SonarQube Quality Gate Status: ${status}"
 
-                    // Check if the quality gate status is OK
-                    if (status != 'OK') {
-                        error "Quality gate failed: ${status}"
+                        // Check if the quality gate status is OK
+                        if (status != 'OK') {
+                            error "Quality gate failed: ${status}"
+                        }
                     }
                 }
             }
