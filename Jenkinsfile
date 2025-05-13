@@ -1,10 +1,15 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'sonarsource/sonar-scanner-cli'
+            args '-v $PWD:/usr/src'
+        }
+    }
 
     environment {
-        SONARQUBE = 'SonarQube' // Jenkins > Configure System > SonarQube server name
-        SONAR_PROJECT_KEY = 'my_project_key' // Change to your actual project key
-        SONAR_AUTH_TOKEN = credentials('SonarQube') // Jenkins Credentials ID
+        SONARQUBE = 'SonarQube'
+        SONAR_PROJECT_KEY = 'my_project_key'
+        SONAR_AUTH_TOKEN = credentials('SonarQube')
     }
 
     stages {
@@ -18,9 +23,7 @@ pipeline {
             steps {
                 withSonarQubeEnv("${SONARQUBE}") {
                     sh '''
-                        docker run --rm \
-                          -v "$PWD":/usr/src \
-                          sonarsource/sonar-scanner-cli \
+                        sonar-scanner \
                           -Dsonar.projectKey=$SONAR_PROJECT_KEY \
                           -Dsonar.sources=. \
                           -Dsonar.host.url=$SONAR_HOST_URL \
