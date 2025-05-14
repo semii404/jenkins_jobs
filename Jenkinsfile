@@ -59,21 +59,34 @@ pipeline {
             }
             steps {
                 script {
-                    // Run sonar-scanner and write output to a file
+                    // Step 1: Run sonar-scanner for project analysis
                     sh """
                         sonar-scanner \
                             -Dsonar.projectKey=$SONAR_PROJECT_KEY \
                             -Dsonar.host.url=$SONAR_HOST_URL \
                             -Dsonar.login=$SONAR_AUTH_TOKEN \
                             -Dsonar.qualitygate.wait=true \
-                        | tee sonar_scan_output.log
+                            | tee sonar_scan_output.log
                     """
-                }
 
-                // Archive the output log as a build artifact
-                archiveArtifacts artifacts: 'sonar_scan_output.log', fingerprint: true
+                    // Step 2: Query issues (e.g., open and confirmed) using SonarQube API
+                    def sonarApiUrl = "${SONAR_HOST_URL}/api/issues/search?projectKeys=${SONAR_PROJECT_KEY}&issueStatuses=OPEN%2CCONFIRMED"
+                    def curlCommand = """curl -u "$SONAR_AUTH_TOKEN:" "$sonarApiUrl" """
+                    def issues = sh(script: curlCommand, returnStdout: true).trim()
+
+                    // Step 3: Archive sonar scan output as a build artifact
+                    archiveArtifacts artifacts: 'sonar_scan_output.log', fingerprint: true
+
+                    // Step 4: Optionally print issues or fail the build if issues are found
+                    echo "SonarQube Issues: ${issues}"
+
+                    // Optional: Fail the build if there are any open/confirmed issues
+                    def jsonResponse = readJSON text: issues
+                    if (jsonResponse.total > 0) {
+                        error "Build failed due to ${jsonResponse.total} open/confirmed issues in SonarQube."
+                    }
+                }
             }
         }
-
     }
 }
