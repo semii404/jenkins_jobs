@@ -74,18 +74,23 @@ pipeline {
                     def curlCommand = """curl -u "$SONAR_AUTH_TOKEN:" "$sonarApiUrl" """
                     def issues = sh(script: curlCommand, returnStdout: true).trim()
 
-                    // Step 3: Archive sonar scan output as a build artifact
-                    archiveArtifacts artifacts: 'sonar_scan_output.log', fingerprint: true
-
-                    // Step 4: Optionally print issues or fail the build if issues are found
-                    echo "SonarQube Issues: ${issues}"
-
-                    // Optional: Fail the build if there are any open/confirmed issues
+                    // Step 3: Save pretty-printed JSON to file
                     def jsonResponse = readJSON text: issues
+                    def prettyJson = writeJSON returnText: true, json: jsonResponse, pretty: 4
+                    writeFile file: 'sonar_issues_report.json', text: prettyJson
+
+                    // Step 4: Archive sonar scan output and JSON report
+                    archiveArtifacts artifacts: 'sonar_scan_output.log', fingerprint: true
+                    archiveArtifacts artifacts: 'sonar_issues_report.json', fingerprint: true
+
+                    // Step 5: Optionally print issues or fail the build if issues are found
+                    echo "SonarQube Issues: ${prettyJson}"
+
                     if (jsonResponse.total > 0) {
                         error "Build failed due to ${jsonResponse.total} open/confirmed issues in SonarQube."
                     }
                 }
+
             }
         }
     }
