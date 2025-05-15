@@ -1,17 +1,22 @@
 pipeline {
     agent none
 
-    environment {          // Name from Jenkins > Configure System
+    environment {
         SONAR_PROJECT_KEY = 'my_project_key'
-        SONAR_AUTH_TOKEN = credentials('SonarQube')  // Credentials from Jenkins
-        SONAR_HOST_URL = 'http://host.docker.internal:9000'  // Set your SonarQube host URL
+        SONAR_HOST_URL = 'http://host.docker.internal:9000'
     }
 
     stages {
         stage('Checkout') {
             agent any
             steps {
-                git credentialsId: 'github-token', branch: 'main', url: 'https://github.com/semii404/MERN.git'
+                withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_TOKEN')]) {
+                    // Clone using HTTPS with token authentication
+                    sh """
+                        git clone https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/semii404/MERN.git
+                        cd MERN
+                    """
+                }
             }
         }
 
@@ -23,8 +28,8 @@ pipeline {
                 }
             }
             steps {
-                script {
-                    sh 'npm install'  // Install npm dependencies
+                dir('MERN') {
+                    sh 'npm install'
                 }
             }
         }
@@ -37,14 +42,16 @@ pipeline {
                 }
             }
             steps {
-              script {
-                    sh '''
-                        sonar-scanner -X \
-                          -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-                          -Dsonar.sources=. \
-                          -Dsonar.host.url=$SONAR_HOST_URL \
-                          -Dsonar.login=$SONAR_AUTH_TOKEN
-                    '''
+                withCredentials([string(credentialsId: 'SonarQube', variable: 'SONAR_AUTH_TOKEN')]) {
+                    dir('MERN') {
+                        sh '''
+                            sonar-scanner -X \
+                              -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                              -Dsonar.sources=. \
+                              -Dsonar.host.url=${SONAR_HOST_URL} \
+                              -Dsonar.login=${SONAR_AUTH_TOKEN}
+                        '''
+                    }
                 }
             }
         }
@@ -57,38 +64,36 @@ pipeline {
                 }
             }
             steps {
-                script {
-                    // Step 1: Run sonar-scanner for project analysis
-                    sh """
-                        sonar-scanner \
-                            -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-                            -Dsonar.host.url=$SONAR_HOST_URL \
-                            -Dsonar.login=$SONAR_AUTH_TOKEN \
-                            -Dsonar.qualitygate.wait=true \
-                            | tee sonar_scan_output.log
-                    """
+                withCredentials([string(credentialsId: 'SonarQube', variable: 'SONAR_AUTH_TOKEN')]) {
+                    dir('MERN') {
+                        script {
+                            sh """
+                                sonar-scanner \
+                                    -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                                    -Dsonar.host.url=${SONAR_HOST_URL} \
+                                    -Dsonar.login=${SONAR_AUTH_TOKEN} \
+                                    -Dsonar.qualitygate.wait=true \
+                                    | tee sonar_scan_output.log
+                            """
 
-                    // Step 2: Query issues using API
-                    def sonarApiUrl = "${SONAR_HOST_URL}/api/issues/search?projectKeys=${SONAR_PROJECT_KEY}&issueStatuses=OPEN%2CCONFIRMED"
-                    def curlCommand = """curl -u "$SONAR_AUTH_TOKEN:" "$sonarApiUrl" """
-                    def issues = sh(script: curlCommand, returnStdout: true).trim()
+                            def sonarApiUrl = "${SONAR_HOST_URL}/api/issues/search?projectKeys=${SONAR_PROJECT_KEY}&issueStatuses=OPEN,CONFIRMED"
+                            def issues = sh(script: "curl -s -u ${SONAR_AUTH_TOKEN}: ${sonarApiUrl}", returnStdout: true).trim()
 
-                    def jsonResponse = readJSON text: issues
-                    def prettyJson = writeJSON returnText: true, json: jsonResponse, pretty: 4
-                    writeFile file: 'sonar_issues_report.json', text: prettyJson
+                            def jsonResponse = readJSON text: issues
+                            def prettyJson = writeJSON returnText: true, json: jsonResponse, pretty: 4
+                            writeFile file: 'sonar_issues_report.json', text: prettyJson
 
-                    // Step 4: Archive sonar scan output and JSON report
-                    archiveArtifacts artifacts: 'sonar_scan_output.log', fingerprint: true
-                    archiveArtifacts artifacts: 'sonar_issues_report.json', fingerprint: true
+                            archiveArtifacts artifacts: 'sonar_scan_output.log', fingerprint: true
+                            archiveArtifacts artifacts: 'sonar_issues_report.json', fingerprint: true
 
-                    // Step 5: Optionally print issues
-                    echo "SonarQube Issues: ${prettyJson}"
+                            echo "SonarQube Issues: ${prettyJson}"
 
-                    // if (jsonResponse.total > 0) {
-                    //     error "Build failed due to ${jsonResponse.total} open/confirmed issues in SonarQube."
-                    // }
+                            // if (jsonResponse.total > 0) {
+                            //     error "Build failed due to ${jsonResponse.total} open/confirmed issues in SonarQube."
+                            // }
+                        }
+                    }
                 }
-
             }
         }
     }
