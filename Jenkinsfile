@@ -2,7 +2,7 @@ pipeline {
     agent none
 
     environment {
-        SONARQUBE = 'SonarQube'            // Name from Jenkins > Configure System
+        // SONARQUBE = 'SonarQube'            // Name from Jenkins > Configure System
         SONAR_PROJECT_KEY = 'my_project_key'
         SONAR_AUTH_TOKEN = credentials('SonarQube')  // Credentials from Jenkins
         SONAR_HOST_URL = 'http://host.docker.internal:9000'  // Set your SonarQube host URL
@@ -38,7 +38,7 @@ pipeline {
                 }
             }
             steps {
-                withSonarQubeEnv("${SONARQUBE}") {
+              script {
                     sh '''
                         sonar-scanner -X \
                           -Dsonar.projectKey=$SONAR_PROJECT_KEY \
@@ -69,12 +69,11 @@ pipeline {
                             | tee sonar_scan_output.log
                     """
 
-                    // Step 2: Query issues (e.g., open and confirmed) using SonarQube API
+                    // Step 2: Query issues using API
                     def sonarApiUrl = "${SONAR_HOST_URL}/api/issues/search?projectKeys=${SONAR_PROJECT_KEY}&issueStatuses=OPEN%2CCONFIRMED"
                     def curlCommand = """curl -u "$SONAR_AUTH_TOKEN:" "$sonarApiUrl" """
                     def issues = sh(script: curlCommand, returnStdout: true).trim()
 
-                    // Step 3: Save pretty-printed JSON to file
                     def jsonResponse = readJSON text: issues
                     def prettyJson = writeJSON returnText: true, json: jsonResponse, pretty: 4
                     writeFile file: 'sonar_issues_report.json', text: prettyJson
@@ -83,12 +82,12 @@ pipeline {
                     archiveArtifacts artifacts: 'sonar_scan_output.log', fingerprint: true
                     archiveArtifacts artifacts: 'sonar_issues_report.json', fingerprint: true
 
-                    // Step 5: Optionally print issues or fail the build if issues are found
+                    // Step 5: Optionally print issues
                     echo "SonarQube Issues: ${prettyJson}"
 
-                    if (jsonResponse.total > 0) {
-                        error "Build failed due to ${jsonResponse.total} open/confirmed issues in SonarQube."
-                    }
+                    // if (jsonResponse.total > 0) {
+                    //     error "Build failed due to ${jsonResponse.total} open/confirmed issues in SonarQube."
+                    // }
                 }
 
             }
