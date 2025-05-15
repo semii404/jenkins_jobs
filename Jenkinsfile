@@ -1,8 +1,7 @@
 pipeline {
     agent none
 
-    environment {
-        // SONARQUBE = 'SonarQube'            // Name from Jenkins > Configure System
+    environment {          // Name from Jenkins > Configure System
         SONAR_PROJECT_KEY = 'my_project_key'
         SONAR_AUTH_TOKEN = credentials('SonarQube')  // Credentials from Jenkins
         SONAR_HOST_URL = 'http://host.docker.internal:9000'  // Set your SonarQube host URL
@@ -12,7 +11,7 @@ pipeline {
         stage('Checkout') {
             agent any
             steps {
-                git branch: 'main', url: 'https://github.com/semii404/jenkins_jobs.git'
+                git credentialsId: 'github-token', branch: 'main', url: 'https://github.com/semii404/MERN.git'
             }
         }
 
