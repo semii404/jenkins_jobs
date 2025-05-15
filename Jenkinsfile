@@ -12,13 +12,22 @@ pipeline {
             agent any
             steps {
                 withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_TOKEN')]) {
-                    sh """
-                        git clone https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/semii404/${REPO_NAME}.git
-                        cd ${REPO_NAME}
-                    """
+                    script {
+                        // Cleanup if directory exists
+                        sh """
+                            if [ -d "${REPO_NAME}" ]; then
+                                echo "Cleaning up existing directory: ${REPO_NAME}"
+                                rm -rf "${REPO_NAME}"
+                            fi
+                        """
+
+                        // Securely clone using env vars without Groovy interpolation
+                        sh 'git clone https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/semii404/${REPO_NAME}.git'
+                    }
                 }
             }
         }
+
 
         stage('Install Dependencies') {
             agent {
