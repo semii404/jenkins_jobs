@@ -2,6 +2,7 @@ pipeline {
     agent none
 
     environment {
+        REPO_NAME = 'MERN'  // <--- Make repo name a variable
         SONAR_PROJECT_KEY = 'my_project_key'
         SONAR_HOST_URL = 'http://host.docker.internal:9000'
     }
@@ -11,10 +12,9 @@ pipeline {
             agent any
             steps {
                 withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_TOKEN')]) {
-                    // Clone using HTTPS with token authentication
                     sh """
-                        git clone https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/semii404/MERN.git
-                        cd MERN
+                        git clone https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/semii404/${REPO_NAME}.git
+                        cd ${REPO_NAME}
                     """
                 }
             }
@@ -28,7 +28,7 @@ pipeline {
                 }
             }
             steps {
-                dir('MERN') {
+                dir(env.REPO_NAME) {
                     sh 'npm install'
                 }
             }
@@ -43,7 +43,7 @@ pipeline {
             }
             steps {
                 withCredentials([string(credentialsId: 'SonarQube', variable: 'SONAR_AUTH_TOKEN')]) {
-                    dir('MERN') {
+                    dir(env.REPO_NAME) {
                         sh '''
                             sonar-scanner -X \
                               -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
@@ -65,7 +65,7 @@ pipeline {
             }
             steps {
                 withCredentials([string(credentialsId: 'SonarQube', variable: 'SONAR_AUTH_TOKEN')]) {
-                    dir('MERN') {
+                    dir(env.REPO_NAME) {
                         script {
                             sh """
                                 sonar-scanner \
@@ -88,9 +88,9 @@ pipeline {
 
                             echo "SonarQube Issues: ${prettyJson}"
 
-                            // if (jsonResponse.total > 0) {
-                            //     error "Build failed due to ${jsonResponse.total} open/confirmed issues in SonarQube."
-                            // }
+                            if (jsonResponse.total > 0) {
+                                error "Build failed due to ${jsonResponse.total} open/confirmed issues in SonarQube."
+                            }
                         }
                     }
                 }
